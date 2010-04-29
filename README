@@ -1,0 +1,20 @@
+2010-04-29
+
+In order to get rolling you have to go to your SAS data/working
+directory (`SASHOME') and create three folders corresponding to
+your three data libraries:
+
+	(1) 'Data', which holds original data sets we get from WRDS;
+
+	(2) 'Workspace', which holds data sets that we generate and
+	    that we wish to use repeatedly; and
+
+	(3) 'Results', which contains the end results of our
+	    computations.
+
+Having a 'Workspace' data library saves us some time when we
+revisiting the project, since SAS purges its temporary 'Work'
+directory each time you close the application.
+
+Lastly before you run any code, make sure you replace instances of
+`SASHOME' within the code with your actual SAS data/working directory.
