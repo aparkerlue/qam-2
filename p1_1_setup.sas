@@ -1,4 +1,49 @@
 * ====================================================================
+  Clean data for eventual use.
+
+  We use the year and month variables for many computations, so we
+  create them here.  We also use the delisting return whenever it is
+  present.
+  ==================================================================== ;
+
+* --------------------------------------------------------------------
+  Sample running time: 9:21.03 / 7:12.60 (real/cpu)
+  -------------------------------------------------------------------- ;
+DATA ws.Crsp_daily(DROP=dlret dlretx);
+    SET dw.Crsp_daily;
+    IF NOT MISSING(dlret) THEN ret = dlret;
+    IF NOT MISSING(dlretx) THEN ret = dlretx;
+    year = YEAR(date);
+    month = MONTH(date);
+* --------------------------------------------------------------------
+  Sample running time: 23.19 / 19.06 (real/cpu)
+  -------------------------------------------------------------------- ;
+DATA ws.Crsp_monthly(DROP=dlret dlretx);
+    SET dw.Crsp_monthly;
+    IF NOT MISSING(dlret) THEN ret = dlret;
+    IF NOT MISSING(dlretx) THEN ret = dlretx;
+    year = YEAR(date);
+    month = MONTH(date);
+RUN;
+
+* --------------------------------------------------------------------
+  Handle special cases.
+
+  Sample running time: 16.43 / 15.35 (real/cpu)
+  -------------------------------------------------------------------- ;
+DATA ws.Crsp_monthly;
+    SET ws.Crsp_monthly;
+    IF permno EQ 38287 AND date EQ '30JAN1970'D THEN DELETE;
+    * The following is from the QAM manual and has not been verified
+      by us. ;
+    IF permno = 64629 AND year = 1982 THEN DELETE;
+    IF ((permno = 53532) OR (permno = 53831) OR (permno = 53858))
+        AND (year = 1971) THEN DELETE;
+    IF ((permno = 55223) OR (permno = 56223)) AND (year = 1972) THEN DELETE;
+    IF ((permno = 68697) OR (permno = 68451)) AND (year = 1985) THEN DELETE;
+RUN;
+
+* ====================================================================
   Set up data for tractable analysis.
   ==================================================================== ;
 
@@ -57,20 +102,6 @@ DATA ws.Top&mStockLimit._index(KEEP=permno year);
         END;
 PROC SORT DATA=ws.Top&mStockLimit._index NODUPKEY;
     BY permno year;
-RUN;
-
-* --------------------------------------------------------------------
-  Produce copy of CRSP daily data set with year variable.
-
-NOTE: There were 69598021 observations read from the data set DW.CRSP_DAILY.
-NOTE: The data set WS.CRSP_DAILY has 69598021 observations and 12 variables.
-NOTE: DATA statement used (Total process time):
-      real time           7:05.68
-      cpu time            6:18.20
-  -------------------------------------------------------------------- ;
-DATA ws.Crsp_daily;
-    SET dw.crsp_daily;
-    year = YEAR(date);
 RUN;
 
 * --------------------------------------------------------------------
