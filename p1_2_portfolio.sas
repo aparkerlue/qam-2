@@ -26,6 +26,15 @@ DATA work.Period_mean(DROP=_TYPE_ _NAME_ date);
 RUN;
 
 * --------------------------------------------------------------------
+  Build PermNo list.
+  -------------------------------------------------------------------- ;
+DATA work.Period_permnos(KEEP=permno);
+    SET work.Period_stats;
+    IF _TYPE_ = 'COV' AND _NAME_ ^= 'DATE';
+    permno = INPUT(SUBSTR(_NAME_, 8), 12.);
+RUN;
+
+* --------------------------------------------------------------------
   Import Fama-French data.
   -------------------------------------------------------------------- ;
 DATA ws.Ff_monthly;
@@ -70,3 +79,33 @@ PROC IML;
     CREATE Tn_weights FROM tnweights;
     APPEND FROM tnweights;
     QUIT;
+
+* Minimum variance portfolio weights;
+DATA Mv_weights;
+    MERGE Period_permnos Mv_weights(RENAME=(COL1 = wt));
+    IF wt LT 0 THEN wt = 0;
+PROC MEANS DATA=Mv_weights NOPRINT;
+    VAR wt;
+    OUTPUT OUT=Mv_weights_sum SUM=wtsum;
+DATA Mv_weights;
+    SET Mv_weights;
+    IF _N_ EQ 1 THEN SET Mv_weights_sum(KEEP=wtsum);
+DATA Mv_weights(KEEP=permno wt);
+    SET Mv_weights;
+    wt = wt/wtsum;
+RUN;
+
+* Tangency portfolio weights;
+DATA Tn_weights;
+    MERGE Period_permnos Tn_weights(RENAME=(COL1 = wt));
+    IF wt LT 0 THEN wt = 0;
+PROC MEANS DATA=Tn_weights NOPRINT;
+    VAR wt;
+    OUTPUT OUT=Tn_weights_sum SUM=wtsum;
+DATA Tn_weights;
+    SET Tn_weights;
+    IF _N_ EQ 1 THEN SET Tn_weights_sum(KEEP=wtsum);
+DATA Tn_weights(KEEP=permno wt);
+    SET Tn_weights;
+    wt = wt/wtsum;
+RUN;
