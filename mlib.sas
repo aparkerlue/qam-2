@@ -20,5 +20,14 @@
             %END;
     %MEND annual_seq;
 
-%MACRO a();
+* --------------------------------------------------------------------
+  For example:
+    %build_period(prefix=ws.Top&mStockLimit._daily, from=1965, to=1969)
+  -------------------------------------------------------------------- ;
+%MACRO build_period(prefix=, from=, to=);
+    DATA work.Period_daily;
+        SET %DO i = &from. %TO &to.; &prefix._&i. %END; ;
+    %MEND build_period;
+
+%MACRO a(prefix=, from=, to=, each=);
     %MEND a;
