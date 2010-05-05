@@ -10,6 +10,10 @@ LIBNAME rs "&sasdata\Results";          * rs: results;
 %LET mFirstYear = 1970;                 * First and final years for which ;
 %LET mFinalYear = 2009;                 * to generate portfolios.         ;
 
+* ====================================================================
+  Tangency and Minimum Variance Portfolios
+  ==================================================================== ;
+
 %INCLUDE "&sashome\p1_1_setup.sas";     * Construct requisite data sets. ;
 %INCLUDE "&sashome\p1_2_portfolio.sas"; * Build portfolios. ;
 

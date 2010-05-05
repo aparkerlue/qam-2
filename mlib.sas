@@ -48,13 +48,8 @@
         IF LEFT(ret) IN ('B' 'C') THEN ret = .;
     %MEND build_period_data;
 
-%MACRO a(prefix=, from=, to=, each=);
-    %DO i = &from. %TO &to.;
-        %END;
-    %MEND a;
-
 %MACRO portfolio_buy_hold_one_year(year=, preceding=, histdata=,
-    prefix=, mvout=, tnout=);
+    prefix=, mvwout=, mvout=, tnwout=, tnout=);
     * ----------------------------------------------------------------
       Generate sample covariance matrix and average returns.
       ---------------------------------------------------------------- ;
@@ -212,10 +207,36 @@
       Output results.
       ================================================================ ;
 
+    DATA &mvwout.;
+        SET &prefix._mv_weights;
     DATA &mvout.;
         SET &prefix._mv_monthly_return;
+    DATA &tnwout.;
+        SET &prefix._tn_weights;
     DATA &tnout.;
         SET &prefix._tn_monthly_return;
     RUN;
 
     %MEND portfolio_buy_hold_one_year;
+
+%MACRO execute_mv_and_tn_strategies(from=, to=, each=,
+    data_prefix=, data_index=, work_prefix=, out_prefix=);
+    %DO i = &from. %TO &to.;
+        * ------------------------------------------------------------
+          Build data set for period.
+          ------------------------------------------------------------ ;
+        %build_period_data(prefix=&data_prefix., for=&i., preceding=&each.,
+            index=&data_index., indexout=&work_prefix._index,
+            out=&work_prefix._daily);
+
+        * ------------------------------------------------------------
+          Construct portfolio and compute returns.
+          ------------------------------------------------------------ ;
+        %portfolio_buy_hold_one_year(year=&i., preceding=&each.,
+            histdata=&work_prefix._daily, prefix=&work_prefix.,
+            mvwout=&out_prefix._mv_weights_&i.,
+            mvout=&out_prefix._mv_returns_&i.,
+            tnwout=&out_prefix._tn_weights_&i.,
+            tnout=&out_prefix._tn_returns_&i.);
+        %END;
+    %MEND execute_mv_and_tn_strategies;

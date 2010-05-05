@@ -43,6 +43,15 @@ DATA ws.Crsp_monthly;
     IF ((permno = 68697) OR (permno = 68451)) AND (year = 1985) THEN DELETE;
 RUN;
 
+* --------------------------------------------------------------------
+  Import Fama-French data.
+  -------------------------------------------------------------------- ;
+DATA ws.Ff_monthly;
+    INFILE "&sashome.\Data\F-F_Research_Data_Factors_daily.txt"
+        FIRSTOBS=6 OBS=11773 MISSOVER;
+    INPUT date YYMMDD8. +2 mktprm 6.2 +2 smb 6.2 +2 hml 6.2 +2 rf 6.3;
+RUN;
+
 * ====================================================================
   Set up data for tractable analysis.
   ==================================================================== ;
