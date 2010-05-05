@@ -3,7 +3,8 @@
   ==================================================================== ;
 
 * --------------------------------------------------------------------
-  Create a data set consisting of PermNo, year and market cap.
+  Create a data set consisting of PermNo, year and market cap for all
+  stocks in CRSP data set.
 
 NOTE: There were 3359695 observations read from the data set DW.CRSP_MONTHLY.
 NOTE: The data set WS.MKTCAP_ANNUAL has 275134 observations and 3 variables.
@@ -21,7 +22,7 @@ DATA ws.Mktcap_annual(KEEP=permno portfolioyear mktcap);
 RUN;
 
 * --------------------------------------------------------------------
-  Produce index and data set of top 500 stocks by market cap for each
+  Produce data sets of top 500 stocks by market cap for each portfolio
   year.
   -------------------------------------------------------------------- ;
 PROC SORT DATA=ws.Mktcap_annual;
@@ -33,7 +34,7 @@ DATA ws.Top&mStockLimit._mktcap_annual(KEEP=permno portfolioyear mktcap)
     rank + 1;
     IF FIRST.portfolioyear THEN rank = 1;
     IF rank <= &mStockLimit;
-    rankname = 'stock'||LEFT(rank);
+    rankname = 'permno_'||LEFT(rank);
 PROC TRANSPOSE DATA=ws.Top&mStockLimit._by_year
     OUT=ws.Top&mStockLimit._by_year(DROP=_NAME_ _LABEL_);
     BY portfolioyear;
@@ -42,19 +43,18 @@ PROC TRANSPOSE DATA=ws.Top&mStockLimit._by_year
 RUN;
 
 * --------------------------------------------------------------------
-  Create index of stocks that we use to generate the
-  variance-covariance matrices for our portfolios.
+  Create index of hypothetical stock-year combinations that we use to
+  generate the covariance matrices for all portfolio years.
   -------------------------------------------------------------------- ;
-DATA ws.Top&mStockLimit._index(DROP=firstdatayear finaldatayear portfolioyear);
+DATA ws.Top&mStockLimit._index(KEEP=permno year);
     SET ws.Top&mStockLimit._mktcap_annual(DROP=mktcap);
     IF portfolioyear >= &mFirstYear. AND portfolioyear <= &mFinalYear.;
     firstdatayear = portfolioyear - &mMaxLookBackInYears.;
-    finaldatayear = portfolioyear - 1;  * Cov matrix: current year not needed;
+    finaldatayear = portfolioyear - 1;  * Do not include portfolio year;
     DO i = firstdatayear TO finaldatayear;
         year = i;
         OUTPUT;
         END;
-    DROP i;
 PROC SORT DATA=ws.Top&mStockLimit._index NODUPKEY;
     BY permno year;
 RUN;
@@ -90,8 +90,7 @@ NOTE: DATA statement used (Total process time):
       cpu time            2:51.12
   -------------------------------------------------------------------- ;
 DATA ws.Top&mStockLimit._daily;
-    MERGE ws.Top&mStockLimit._index(IN=bIndexIn)
-        ws.Crsp_daily(IN=bDailyIn);
+    MERGE ws.Top&mStockLimit._index(IN=bIndexIn) ws.Crsp_daily(IN=bDailyIn);
     BY permno year;
     IF bIndexIn AND bDailyIn;
 * --------------------------------------------------------------------
@@ -102,7 +101,7 @@ NOTE: PROCEDURE SORT used (Total process time):
       cpu time            1:25.68
   -------------------------------------------------------------------- ;
 PROC SORT DATA=ws.Top&mStockLimit._daily;
-    BY date;
+    BY permno date;
 RUN;
 
 * --------------------------------------------------------------------
