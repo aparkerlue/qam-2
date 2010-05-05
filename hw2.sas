@@ -12,3 +12,18 @@ LIBNAME rs "&sasdata\Results";          * rs: results;
 
 %INCLUDE "&sashome\p1_1_setup.sas";     * Construct requisite data sets. ;
 %INCLUDE "&sashome\p1_2_portfolio.sas"; * Build portfolios. ;
+
+* ====================================================================
+  Standard Attribution Data
+  ==================================================================== ;
+
+* --------------------------------------------------------------------
+  Perform CAPM and FF-3 regressions on portfolios.
+  -------------------------------------------------------------------- ;
+%INCLUDE "&sashome\p5_1_regs.sas"; 
+
+* --------------------------------------------------------------------
+  Perform relative and absolute performance attribution analysis on
+  portfolios.
+  -------------------------------------------------------------------- ;
+%INCLUDE "&sashome\p5_2_perform.sas"; 
