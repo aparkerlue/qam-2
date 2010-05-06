@@ -73,6 +73,9 @@
     RUN;
     %MEND returns_sample_covar_and_mean;
 
+* --------------------------------------------------------------------
+  Construct ordered list of PermNos from covariance matrix.
+  -------------------------------------------------------------------- ;
 %MACRO permnos_from_covar_matrix(covmat=, out=);
     PROC TRANSPOSE DATA=&covmat. OUT=&out.(KEEP=_NAME_);
         VAR permno_:;
@@ -83,33 +86,40 @@
     %MEND permnos_from_covar_matrix;
 
 * --------------------------------------------------------------------
+  Compute risk-free rate for period.
+  -------------------------------------------------------------------- ;
+%MACRO period_riskfree(ffdata=, year=, preceding=, out=);
+    %LET mTmpDsPrefix = M_prf;
+    DATA &mTmpDsPrefix._riskfree;
+        SET &ffdata.(KEEP=date rf);
+        year = YEAR(date);
+        IF year >= &year. - &preceding. AND year < &year.;
+        DROP year;
+    PROC MEANS DATA=&mTmpDsPrefix._riskfree NOPRINT;
+        VAR rf;
+        OUTPUT OUT=&out. MEAN=rf;
+    DATA &out.;
+        SET &out.(KEEP=rf);
+    PROC DATASETS LIBRARY=work NOLIST;
+        DELETE &mTmpDsPrefix._riskfree;
+    RUN;
+    %MEND period_riskfree;
+
+* --------------------------------------------------------------------
   Compute minimum variance and tangency portfolio weights, and compute
   returns from one-year buy-and-hold.
   -------------------------------------------------------------------- ;
 %MACRO portfolio_buy_hold_one_year(year=, preceding=, histdata=,
     prefix=, mvwout=, mvout=, tnwout=, tnout=);
     * ----------------------------------------------------------------
-      Generate sample covariance matrix and average returns, and build
-      PermNo list.
+      Generate sample covariance matrix and average returns, build
+      PermNo list, and compute risk-free rate for period.
       ---------------------------------------------------------------- ;
     %returns_sample_covar_and_mean(data=&histdata.,
         outcovar=&prefix._cov, outmean=&prefix._mean)
     %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
-    RUN;
-
-    * ----------------------------------------------------------------
-      Compute risk-free rate for period.
-      ---------------------------------------------------------------- ;
-    DATA &prefix._riskfree;
-        SET ws.Ff_monthly(KEEP=date rf);
-        year = YEAR(date);
-        IF year >= &year. - &preceding. AND year < &year.;
-        DROP year;
-    PROC MEANS DATA=&prefix._riskfree NOPRINT;
-        VAR rf;
-        OUTPUT OUT=&prefix._riskfree_mean MEAN=rf;
-    DATA &prefix._riskfree_mean;
-        SET &prefix._riskfree_mean(KEEP=rf);
+    %period_riskfree(ffdata=ws.Ff_monthly, year=&year., preceding=&preceding.,
+        out=&prefix._riskfree_mean)
     RUN;
 
     * ================================================================
@@ -259,3 +269,21 @@
             tnout=&out_prefix._tn_returns_&i.);
         %END;
     %MEND execute_mv_and_tn_strategies;
+
+%MACRO bootresample_tangent_portfolio(year=, preceding=, histdata=, prefix=);
+    * ----------------------------------------------------------------
+      Generate sample covariance matrix and average returns, build
+      PermNo list, and compute risk-free rate for period.
+      ---------------------------------------------------------------- ;
+    %returns_sample_covar_and_mean(data=&histdata.,
+        outcovar=&prefix._cov, outmean=&prefix._mean)
+    %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
+    %period_riskfree(ffdata=ws.Ff_monthly, year=&year., preceding=&preceding.,
+        out=&prefix._riskfree_mean)
+    RUN;
+
+    %DO i = 1 %TO 20;
+        * FIXME: bootstrap resampling code here;
+        %END;
+
+    %MEND bootresample_tangent_portfolio;
