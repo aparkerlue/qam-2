@@ -280,7 +280,8 @@
       Generate covariance matrix and average returns from daily data.
       ---------------------------------------------------------------- ;
     %returns_sample_covar_and_mean(data=&histdata_daily.,
-        outcovar=&prefix._cov, outmean=&prefix._mean_daily)
+        outcovar=&prefix._&year._&preceding._cov,
+        outmean=&prefix._&year._&preceding._mean_daily)
     RUN;
     * ----------------------------------------------------------------
       Build PermNo list from daily data.
