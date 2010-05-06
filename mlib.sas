@@ -63,7 +63,7 @@
     PROC CORR DATA=&prefix._returns_by_date COV OUT=&prefix._stats NOPRINT;
     DATA &prefix._cov(DROP=_TYPE_ _NAME_ DATE);
         SET &prefix._stats;
-        IF _TYPE_ EQ 'COV' AND _NAME_ NE 'DATE';
+        IF _TYPE_ = 'COV' AND _NAME_ ^= 'DATE';
     DATA &prefix._mean(DROP=_TYPE_ _NAME_ date);
         SET &prefix._stats;
         IF _TYPE_ = 'MEAN';
