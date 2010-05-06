@@ -48,34 +48,53 @@
         IF LEFT(ret) IN ('B' 'C') THEN ret = .;
     %MEND build_period_data;
 
-%MACRO portfolio_buy_hold_one_year(year=, preceding=, histdata=,
-    prefix=, mvwout=, mvout=, tnwout=, tnout=);
-    * ----------------------------------------------------------------
-      Generate sample covariance matrix and average returns.
-      ---------------------------------------------------------------- ;
-    PROC SORT DATA=&histdata.;
+* --------------------------------------------------------------------
+  Compute sample covariance matrix and mean for returns data.
+  -------------------------------------------------------------------- ;
+%MACRO returns_sample_covar_and_mean(data=, outcovar=, outmean=);
+    %LET mTmpDsPrefix = M_scm;
+    PROC SORT DATA=&data.;
         BY date permno;
-    PROC TRANSPOSE DATA=&histdata.(KEEP=permno date ret)
-        OUT=&prefix._returns_by_date PREFIX=permno_;
+    PROC TRANSPOSE DATA=&data.(KEEP=permno date ret)
+        OUT=&mTmpDsPrefix._returns_by_date PREFIX=permno_;
         BY date;
         ID permno;
         VAR ret;
-    PROC CORR DATA=&prefix._returns_by_date COV OUT=&prefix._stats NOPRINT;
-    DATA &prefix._cov(DROP=_TYPE_ _NAME_ DATE);
-        SET &prefix._stats;
+    PROC CORR DATA=&mTmpDsPrefix._returns_by_date COV
+        OUT=&mTmpDsPrefix._stats NOPRINT;
+    DATA &outcovar.(DROP=_TYPE_ _NAME_ DATE);
+        SET &mTmpDsPrefix._stats;
         IF _TYPE_ = 'COV' AND _NAME_ ^= 'DATE';
-    DATA &prefix._mean(DROP=_TYPE_ _NAME_ date);
-        SET &prefix._stats;
+    DATA &outmean.(DROP=_TYPE_ _NAME_ date);
+        SET &mTmpDsPrefix._stats;
         IF _TYPE_ = 'MEAN';
+    PROC DATASETS LIBRARY=work NOLIST;
+        DELETE &mTmpDsPrefix._returns_by_date &mTmpDsPrefix._stats;
     RUN;
+    %MEND returns_sample_covar_and_mean;
 
-    * ----------------------------------------------------------------
-      Build PermNo list.
-      ---------------------------------------------------------------- ;
-    DATA &prefix._permnos(KEEP=permno);
-        SET &prefix._stats;
-        IF _TYPE_ = 'COV' AND _NAME_ ^= 'DATE';
+%MACRO permnos_from_covar_matrix(covmat=, out=);
+    PROC TRANSPOSE DATA=&covmat. OUT=&out.(KEEP=_NAME_);
+        VAR permno_:;
+    DATA &out.(KEEP=permno);
+        SET &out.;
         permno = INPUT(SUBSTR(_NAME_, 8), 12.);
+    RUN;
+    %MEND permnos_from_covar_matrix;
+
+* --------------------------------------------------------------------
+  Compute minimum variance and tangency portfolio weights, and compute
+  returns from one-year buy-and-hold.
+  -------------------------------------------------------------------- ;
+%MACRO portfolio_buy_hold_one_year(year=, preceding=, histdata=,
+    prefix=, mvwout=, mvout=, tnwout=, tnout=);
+    * ----------------------------------------------------------------
+      Generate sample covariance matrix and average returns, and build
+      PermNo list.
+      ---------------------------------------------------------------- ;
+    %returns_sample_covar_and_mean(data=&histdata.,
+        outcovar=&prefix._cov, outmean=&prefix._mean)
+    %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
     RUN;
 
     * ----------------------------------------------------------------
