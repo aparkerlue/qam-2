@@ -89,19 +89,11 @@
   Compute risk-free rate for period.
   -------------------------------------------------------------------- ;
 %MACRO period_riskfree(ffdata=, year=, preceding=, out=);
-    %LET mTmpDsPrefix = M_prf;
-    DATA &mTmpDsPrefix._riskfree;
+    DATA &out.;
         SET &ffdata.(KEEP=date rf);
         year = YEAR(date);
         IF year >= &year. - &preceding. AND year < &year.;
         DROP year;
-    PROC MEANS DATA=&mTmpDsPrefix._riskfree NOPRINT;
-        VAR rf;
-        OUTPUT OUT=&out. MEAN=rf;
-    DATA &out.;
-        SET &out.(KEEP=rf);
-    PROC DATASETS LIBRARY=work NOLIST;
-        DELETE &mTmpDsPrefix._riskfree;
     RUN;
     %MEND period_riskfree;
 
@@ -117,9 +109,19 @@
       ---------------------------------------------------------------- ;
     %returns_sample_covar_and_mean(data=&histdata.,
         outcovar=&prefix._cov, outmean=&prefix._mean)
+    RUN;
     %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
+    RUN;
     %period_riskfree(ffdata=ws.Ff_monthly, year=&year., preceding=&preceding.,
-        out=&prefix._riskfree_mean)
+        out=&prefix._riskfree)
+    RUN;
+
+    * ----------------------------------------------------------------
+      Compute average risk-free rate for period.
+      ---------------------------------------------------------------- ;
+    PROC MEANS DATA=&prefix._riskfree NOPRINT;
+        VAR rf;
+        OUTPUT OUT=&prefix._riskfree_mean(KEEP=rf) MEAN=rf;
     RUN;
 
     * ================================================================
@@ -256,7 +258,8 @@
           ------------------------------------------------------------ ;
         %build_period_data(prefix=&data_prefix., for=&i., preceding=&each.,
             index=&data_index., indexout=&work_prefix._index,
-            out=&work_prefix._daily);
+            out=&work_prefix._daily)
+        RUN;
 
         * ------------------------------------------------------------
           Construct portfolio and compute returns.
@@ -266,24 +269,96 @@
             mvwout=&out_prefix._mv_weights_&i.,
             mvout=&out_prefix._mv_returns_&i.,
             tnwout=&out_prefix._tn_weights_&i.,
-            tnout=&out_prefix._tn_returns_&i.);
+            tnout=&out_prefix._tn_returns_&i.)
+        RUN;
         %END;
     %MEND execute_mv_and_tn_strategies;
 
-%MACRO bootresample_tangent_portfolio(year=, preceding=, histdata=, prefix=);
+%MACRO bootresample_tangent_portfolio(year=, preceding=,
+    histdata_daily=, histdata_monthly=, prefix=);
     * ----------------------------------------------------------------
       Generate sample covariance matrix and average returns, build
       PermNo list, and compute risk-free rate for period.
       ---------------------------------------------------------------- ;
-    %returns_sample_covar_and_mean(data=&histdata.,
-        outcovar=&prefix._cov, outmean=&prefix._mean)
-    %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
+    %returns_sample_covar_and_mean(data=&histdata_daily.,
+        outcovar=&prefix._cov_daily, outmean=&prefix._mean_daily)
+    RUN;
+    %permnos_from_covar_matrix(covmat=&prefix._cov_daily, out=&prefix._permnos)
+    RUN;
     %period_riskfree(ffdata=ws.Ff_monthly, year=&year., preceding=&preceding.,
-        out=&prefix._riskfree_mean)
+        out=&prefix._riskfree)
     RUN;
 
     %DO i = 1 %TO 20;
-        * FIXME: bootstrap resampling code here;
+        * ------------------------------------------------------------
+          Prepare randomly selected dates for sampling.
+          ------------------------------------------------------------ ;
+        DATA Dates_sample;
+            SET &histdata_monthly.;
+            BY monthyear;
+            IF FIRST.monthyear;
+            order = RANUNI(-1);
+        PROC SORT DATA=Dates_sample;
+            BY order;
+        DATA Dates_sample(KEEP=monthyear);
+            SET Dates_sample(OBS=12);   * 12 observations per iteration;
+        RUN;
+
+        * FIXME: continue bootstrap resampling code here with
+          ch_11_proforma.sas, line 186;
+
+        * ------------------------------------------------------------
+          Compute average risk-free rate for period.
+          ------------------------------------------------------------ ;
+        PROC MEANS DATA=&prefix._riskfree NOPRINT;
+            VAR rf;
+            OUTPUT OUT=&prefix._riskfree_mean(KEEP=rf) MEAN=rf;
+        RUN;
         %END;
 
     %MEND bootresample_tangent_portfolio;
+
+%MACRO build_period_data_monthly(year=, preceding=, index=, out=);
+    DATA &out.;
+        SET ws.Crsp_monthly;
+        IF year >= &year. - &preceding. AND year < &year.;
+    DATA &out.;
+        MERGE &index.(IN=bIndexIn) &out.(IN=bDataIn);
+        BY permno;
+        IF bIndexIn AND bIndexIn;
+        IF LEFT(ret) IN ('B' 'C') THEN ret = .;
+        monthyear = MDY(month, 1, year);
+    PROC SORT DATA=&out.;
+        BY date permno;
+    %MEND build_period_data_monthly;
+
+%MACRO execute_bootstrap_tn_strategy(from=, to=, each=,
+    data_prefix=, data_index=, work_prefix=, out_prefix=);
+    %DO i = &from. %TO &to.;
+        * ------------------------------------------------------------
+          Build daily and monthly data sets for period.
+          ------------------------------------------------------------ ;
+        %build_period_data(prefix=&data_prefix., for=&i., preceding=&each.,
+            index=&data_index., indexout=&work_prefix._index,
+            out=&work_prefix._daily)
+        RUN;
+        %build_period_monthly(year=&i., preceding=&each.,
+            index=&work_prefix._index, out=&work_prefix._monthly)
+        RUN;
+
+        * ------------------------------------------------------------
+          Construct portfolio and compute returns.
+          ------------------------------------------------------------ ;
+        %bootresample_tangent_portfolio(year=&i.,
+            histdata_monthly=&work_prefix._monthly)
+        RUN;
+        * FIXME: to be removed;
+        %portfolio_buy_hold_one_year(year=&i., preceding=&each.,
+            histdata=&work_prefix._daily, prefix=&work_prefix.,
+            mvwout=&out_prefix._mv_weights_&i.,
+            mvout=&out_prefix._mv_returns_&i.,
+            tnwout=&out_prefix._tn_weights_&i.,
+            tnout=&out_prefix._tn_returns_&i.)
+        RUN;
+        %END;
+    %MEND execute_bootstrap_tn_strategy;
