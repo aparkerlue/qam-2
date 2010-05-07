@@ -33,8 +33,78 @@ DATA ws.diff_weight;
 	MERGE ws.Hist5yr_tn_weights_1970 ws.Hist5yr_tn_weights_1971;
 	BY PERMNO;
 
-RUN; 
+RUN;
 
+* ====================================================================
+  Turnover
+  ==================================================================== ;
+
+%MACRO turnover_single_year(ds=, year=, out=);
+    DATA &out.;
+        SET &ds.;
+        IF MISSING(wt) THEN wt = 0;
+        IF MISSING(endwt) THEN endwt = 0;
+        turn2way = ABS(endwt - wt);
+    PROC MEANS DATA=&out. NOPRINT;
+        VAR turn2way;
+        OUTPUT OUT=&out. SUM=turnover2way;
+    DATA &out.(KEEP=year turnover2way);
+        SET &out.;
+        year = 1970;
+    RUN;
+    %MEND turnover_single_year;
+
+* NOTE: from must be strictly less than to. ;
+%MACRO turnover_avg_over_period(dsprefix=, from=, to=, out=);
+    %turnover_single_year(ds=&dsprefix._&from., year=&from.,
+        out=&dsprefix._totmp)
+    RUN;
+    DATA &out.;
+        SET &dsprefix._totmp;
+    RUN;
+    %DO year = &from. + 1 %TO &to.;
+        %turnover_single_year(ds=&dsprefix._&year., year=&year.,
+            out=&dsprefix._totmp)
+        RUN;
+        DATA &out.;
+            SET &out. &dsprefix._totmp;
+        RUN;
+        %END;
+    PROC MEANS DATA=&out. NOPRINT;
+        VAR turnover2way;
+        OUTPUT OUT=&out. MEAN=avgturnover2way;
+    DATA &out.;
+        SET &out.;
+        avgturnover1way = avgturnover2way / 2;
+    RUN;
+    %MEND turnover_avg_over_period;
+
+%turnover_avg_over_period(dsprefix=ws.Hist5yr_mv_weights,
+    from=&mFirstYear., to=&mFinalYear.,
+    out=ws.Hist5yr_mv_avgturnover)
+RUN;
+%turnover_avg_over_period(dsprefix=ws.Hist5yr_tn_weights,
+    from=&mFirstYear., to=&mFinalYear.,
+    out=ws.Hist5yr_tn_avgturnover)
+RUN;
+
+%turnover_avg_over_period(dsprefix=ws.Hist2yr_mv_weights,
+    from=&mFirstYear., to=&mFinalYear.,
+    out=ws.Hist2yr_mv_avgturnover)
+RUN;
+%turnover_avg_over_period(dsprefix=ws.Hist2yr_tn_weights,
+    from=&mFirstYear., to=&mFinalYear.,
+    out=ws.Hist2yr_tn_avgturnover)
+RUN;
+
+%turnover_avg_over_period(dsprefix=ws.Bootstrap5yr_tn_weights,
+    from=&mFirstYear., to=&mFinalYear.,
+    out=ws.Bootstrap5yr_tn_avgturnover)
+RUN;
+
+* ====================================================================
+  Industry Weights
+  ==================================================================== ;
 
 PROC SORT DATA=ws.indust_weight;
 	BY ind;
