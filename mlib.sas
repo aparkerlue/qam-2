@@ -239,18 +239,32 @@
 
     PROC SORT DATA=&prefix._mv_monthly;
         BY permno date;
-    DATA &prefix._mv_weights(KEEP=permno wt endwt);
+    DATA &prefix._mv_weights;
         MERGE &prefix._mv_weights &prefix._mv_monthly(WHERE=(month = 12));
         BY permno;
         endwt = dyn_wt * (1 + retx);
+    PROC MEANS DATA=&prefix._mv_weights NOPRINT;
+        VAR endwt;
+        OUTPUT OUT=Sumwt SUM=wtsum;
+    DATA &prefix._mv_weights(KEEP=permno wt endwt);
+        SET &prefix._mv_weights;
+        IF _N_ EQ 1 THEN SET Sumwt(KEEP=wtsum);
+        endwt = endwt / wtsum;
     RUN;
 
     PROC SORT DATA=&prefix._tn_monthly;
         BY permno date;
-    DATA &prefix._tn_weights(KEEP=permno wt endwt);
+    DATA &prefix._tn_weights;
         MERGE &prefix._tn_weights &prefix._tn_monthly(WHERE=(month = 12));
         BY permno;
         endwt = dyn_wt * (1 + retx);
+    PROC MEANS DATA=&prefix._tn_weights NOPRINT;
+        VAR endwt;
+        OUTPUT OUT=Sumwt SUM=wtsum;
+    DATA &prefix._tn_weights(KEEP=permno wt endwt);
+        SET &prefix._tn_weights;
+        IF _N_ EQ 1 THEN SET Sumwt(KEEP=wtsum);
+        endwt = endwt / wtsum;
     RUN;
 
     * ================================================================
@@ -475,10 +489,17 @@
       ---------------------------------------------------------------- ;
     PROC SORT DATA=&prefix._&year._tn_monthly;
         BY permno date;
-    DATA &out_wt.(KEEP=permno wt endwt);
+    DATA &out_wt.;
         MERGE &out_wt. &prefix._&year._tn_monthly(WHERE=(month = 12));
         BY permno;
         endwt = dyn_wt * (1 + retx);
+    PROC MEANS DATA=&out_wt. NOPRINT;
+        VAR endwt;
+        OUTPUT OUT=Sumwt SUM=wtsum;
+    DATA &out_wt.(KEEP=permno wt endwt);
+        SET &out_wt.;
+        IF _N_ EQ 1 THEN SET Sumwt(KEEP=wtsum);
+        endwt = endwt / wtsum;
     RUN;
 
     %MEND bootresample_tangent_portfolio;
