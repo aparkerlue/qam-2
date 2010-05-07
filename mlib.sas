@@ -470,6 +470,17 @@
         OUTPUT OUT=&out_ret MEAN=tr pr;
     RUN;
 
+    * ----------------------------------------------------------------
+      Add endwts to sampled weights.
+      ---------------------------------------------------------------- ;
+    PROC SORT DATA=&prefix._&year._tn_monthly;
+        BY permno date;
+    DATA &out_wt.(KEEP=permno wt endwt);
+        MERGE &out_wt. &prefix._&year._tn_monthly(WHERE=(month = 12));
+        BY permno;
+        endwt = dyn_wt * (1 + retx);
+    RUN;
+
     %MEND bootresample_tangent_portfolio;
 
 %MACRO build_period_data_monthly(year=, preceding=, index=, out=);
