@@ -1,2 +1,6 @@
-%LET sashome = \\vmware-host\Shared Folders\alue@whiskey\Documents\Academics\UCLA Anderson\MGMT 237h\Homework 2;
-%LET sasdata = &sashome.;
+%LET sashome = ;
+
+%LET sasdata = ;
+%LET dwdir = ;
+%LET wsdir = ;
+%LET rsdir = ;
