@@ -1,9 +1,9 @@
-%INCLUDE 'C:\Documents and Settings\Todd Groth\My Documents\My SAS Files\QAM-2\config.sas'; * Define SASHOME;
+%INCLUDE 'My Documents\My SAS Files\config.sas'; * Define SASHOME;
 %INCLUDE "&sashome\mlib.sas";           * Include macro library;
 
-LIBNAME dw "&sasdata\Data";             * dw: data warehouse;
-LIBNAME ws "&sasdata\Workspace";        * ws: workspace;
-LIBNAME rs "&sasdata\Output";          * rs: results;
+LIBNAME dw "&sasdata.\&dwdir.";         * dw: data warehouse;
+LIBNAME ws "&sasdata.\&wsdir.";         * ws: workspace;
+LIBNAME rs "&sasdata.\&rsdir.";         * rs: results;
 
 %LET mStockLimit = 500;                 * Total stocks in universe;
 %LET mMaxLookBackInYears = 5;
