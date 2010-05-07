@@ -43,7 +43,7 @@
         MERGE &indexout.(IN=bIndexIn) &out.(IN=bDailyIn);
         BY permno;
         IF bIndexIn AND bDailyIn;
-        IF LEFT(ret) IN ('B' 'C') THEN ret = .;
+        IF LEFT(ret) IN ('B' 'C') THEN ret = 0;
     %MEND build_period_data;
 
 * --------------------------------------------------------------------
