@@ -283,6 +283,18 @@
         outmean=&prefix._&year._&preceding._mean_daily)
     RUN;
     * ----------------------------------------------------------------
+      FIXME: This is a hack.  Change missing values to 0 in covariance
+      matrix.
+      ---------------------------------------------------------------- ;
+    DATA &prefix._&year._&preceding._cov;
+        SET &prefix._&year._&preceding._cov;
+        ARRAY v (*) _ALL_;
+        DO i = 1 TO Dim(v);
+            IF MISSING(v(i)) THEN v(i) = 0;
+            END;
+        DROP i;
+    RUN;
+    * ----------------------------------------------------------------
       Build PermNo list from daily data.
       ---------------------------------------------------------------- ;
     %permnos_from_covar_matrix(covmat=&prefix._&year._&preceding._cov,
