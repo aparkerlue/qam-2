@@ -284,17 +284,18 @@
     * ----------------------------------------------------------------
       Build PermNo list from daily data.
       ---------------------------------------------------------------- ;
-    %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
+    %permnos_from_covar_matrix(covmat=&prefix._&year._&preceding._cov,
+        out=&prefix._permnos)
     RUN;
     * ----------------------------------------------------------------
       Compute risk-free rate for period from monthly data.
       ---------------------------------------------------------------- ;
     %period_riskfree(ffdata=ws.Ff_monthly, year=&year., preceding=&preceding.,
-        out=&prefix._riskfree)
+        out=&prefix._&year._&preceding._riskfree)
     RUN;
     * Add monthyear variable. ;
-    DATA &prefix._riskfree;
-        SET &prefix._riskfree;
+    DATA &prefix._&year._&preceding._riskfree;
+        SET &prefix._&year._&preceding._riskfree;
         monthyear = MDY(MONTH(date), 1, YEAR(date));
     RUN;
 
@@ -318,36 +319,38 @@
         * ------------------------------------------------------------
           Compute average (monthly) risk-free rate for period.
           ------------------------------------------------------------ ;
-        DATA &prefix._riskfree_mean;
-            MERGE Dates_sample(IN=bSampleIn) &prefix._riskfree;
-            By monthyear;
+        DATA &prefix._&year._&preceding._riskfree_mean;
+            MERGE Dates_sample(IN=bSampleIn)
+                &prefix._&year._&preceding._riskfree;
+            BY monthyear;
             IF bSampleIn;
-        PROC MEANS DATA=&prefix._riskfree_mean NOPRINT;
+        PROC MEANS DATA=&prefix._&year._&preceding._riskfree_mean NOPRINT;
             Var rf;
-            OUTPUT OUT=&prefix._riskfree_mean(KEEP=rf) MEAN=rf;
+            OUTPUT OUT=&prefix._&year._&preceding._riskfree_mean(KEEP=rf)
+                MEAN=rf;
         RUN;
 
         * ------------------------------------------------------------
           Compute average (monthly) returns for period.
           ------------------------------------------------------------ ;
-        DATA &prefix._mean;
+        DATA &prefix._&year._&preceding._mean;
             MERGE Dates_sample(IN=bSampleIn) &histdata_monthly.;
             BY monthyear;
             IF bSampleIn;
-        PROC SORT DATA=&prefix._mean;
+        PROC SORT DATA=&prefix._&year._&preceding._mean;
             BY permno;
         PROC SORT DATA=&prefix._permnos;
             BY permno;
-        DATA &prefix._mean;
-            MERGE &prefix._mean &prefix._permnos;
+        DATA &prefix._&year._&preceding._mean;
+            MERGE &prefix._&year._&preceding._mean &prefix._permnos;
             BY permno;
             IF MISSING(ret) THEN ret = 0;
-        PROC MEANS DATA=&prefix._mean NOPRINT;
+        PROC MEANS DATA=&prefix._&year._&preceding._mean NOPRINT;
             BY permno;
             VAR ret;
-            OUTPUT OUT=&prefix._mean(KEEP=ret) MEAN=ret;
+            OUTPUT OUT=&prefix._&year._&preceding._mean(KEEP=ret) MEAN=ret;
         *DATA _NULL_;
-        *    SET &prefix._mean NOBS=nobs;
+        *    SET &prefix._&year._&preceding._mean NOBS=nobs;
         *    IF nobs NE 500 THEN ABORT RETURN;
         RUN;
 
@@ -356,27 +359,29 @@
           ------------------------------------------------------------ ;
         PROC IML;
             RESET NOPRINT;
-            USE &prefix._cov;
+            USE &prefix._&year._&preceding._cov;
             READ ALL INTO scm;
-            USE &prefix._riskfree_mean;
+            USE &prefix._&year._&preceding._riskfree_mean;
             READ ALL INTO rf;
-            USE &prefix._mean;
+            USE &prefix._&year._&preceding._mean;
             READ ALL INTO mean;
             one = J(500,1);
             sigmainv = GINV(scm);
             tnweights = sigmainv * (mean - rf*one);
-            CREATE &prefix._tn_weights FROM tnweights;
+            CREATE &prefix._&year._&preceding._tn_weights FROM tnweights;
             APPEND FROM tnweights;
             QUIT;
-        DATA &prefix._tn_weights;
-            MERGE &prefix._permnos &prefix._tn_weights(RENAME=(COL1 = wt));
+        DATA &prefix._&year._&preceding._tn_weights;
+            MERGE &prefix._permnos
+                &prefix._&year._&preceding._tn_weights(RENAME=(COL1 = wt));
             IF wt LT 0 THEN wt = 0;
-        PROC MEANS DATA=&prefix._tn_weights NOPRINT;
+        PROC MEANS DATA=&prefix._&year._&preceding._tn_weights NOPRINT;
             VAR wt;
-            OUTPUT OUT=&prefix._tn_weights_sum SUM=wtsum;
-        DATA &prefix._tn_weights(KEEP=permno wt);
-            SET &prefix._tn_weights;
-            IF _N_ EQ 1 THEN SET &prefix._tn_weights_sum(KEEP=wtsum);
+            OUTPUT OUT=&prefix._&year._&preceding._tn_weights_sum SUM=wtsum;
+        DATA &prefix._&year._&preceding._tn_weights(KEEP=permno wt);
+            SET &prefix._&year._&preceding._tn_weights;
+            IF _N_ EQ 1 THEN
+                SET &prefix._&year._&preceding._tn_weights_sum(KEEP=wtsum);
             wt = wt / wtsum;            * Normalize;
         RUN;
 
@@ -385,12 +390,12 @@
           ------------------------------------------------------------ ;
         %IF &i. EQ 1 %THEN %DO;
             DATA &out_wt.;
-                SET &prefix._tn_weights;
+                SET &prefix._&year._&preceding._tn_weights;
             RUN;
             %END;
         %ELSE %DO;
             DATA &out_wt.;
-                SET &out_wt. &prefix._tn_weights;
+                SET &out_wt. &prefix._&year._&preceding._tn_weights;
             RUN;
             %END;
         %END;                           * DO loop for resampling;
@@ -411,8 +416,8 @@
       ---------------------------------------------------------------- ;
     PROC SORT DATA=&out_wt.;
         BY permno;
-    DATA &prefix._tn_monthly(KEEP=permno date year month wt ret retx dyn_wt
-        lag_retx);
+    DATA &prefix._&year._tn_monthly(KEEP=permno date year month wt ret retx
+        dyn_wt lag_retx);
         MERGE &out_wt.(IN=bWeightsIn) ws.Crsp_monthly(WHERE=(year EQ &year.));
         BY permno;
         IF bWeightsIn;
@@ -423,9 +428,9 @@
             dyn_wt = wt;
             END;
         ELSE dyn_wt = dyn_wt * (1 + lag_retx);
-    PROC SORT DATA=&prefix._tn_monthly;
+    PROC SORT DATA=&prefix._&year._tn_monthly;
         BY date permno;
-    PROC MEANS DATA=&prefix._tn_monthly NOPRINT;
+    PROC MEANS DATA=&prefix._&year._tn_monthly NOPRINT;
         BY year month;
         VAR ret retx;
         WEIGHT dyn_wt;
