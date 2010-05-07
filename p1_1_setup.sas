@@ -160,14 +160,7 @@ DATA _NULL_;
 RUN;
 
 * --------------------------------------------------------------------
-NOTE: There were 6810031 observations read from the data set WS.TOP500_DAILY.
-NOTE: The data set WS.TOP500_DAILY_1965 has 110034 observations and 11 variables.
-NOTE: The data set WS.TOP500_DAILY_1966 has 121113 observations and 11 variables.
-  ...
-NOTE: The data set WS.TOP500_DAILY_2008 has 125867 observations and 11 variables.
-NOTE: DATA statement used (Total process time):
-      real time           4:10.05
-      cpu time            56.60 seconds
+  Sample running time: 4:10.05 / 56.60 (real/cpu)
   -------------------------------------------------------------------- ;
 %annual_seq(ds=ws.Top&mStockLimit._daily, from=&mMinYear., to=&mMaxYear.)
 RUN;
