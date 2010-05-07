@@ -50,7 +50,7 @@ RUN;
         OUTPUT OUT=&out. SUM=turnover2way;
     DATA &out.(KEEP=year turnover2way);
         SET &out.;
-        year = 1970;
+        year = &year.;
     RUN;
     %MEND turnover_single_year;
 
@@ -59,18 +59,18 @@ RUN;
     %turnover_single_year(ds=&dsprefix._&from., year=&from.,
         out=&dsprefix._totmp)
     RUN;
-    DATA &out.;
+    DATA &dsprefix._tocum;
         SET &dsprefix._totmp;
     RUN;
     %DO year = &from. + 1 %TO &to.;
         %turnover_single_year(ds=&dsprefix._&year., year=&year.,
             out=&dsprefix._totmp)
         RUN;
-        DATA &out.;
-            SET &out. &dsprefix._totmp;
+        DATA &dsprefix._tocum;
+            SET &dsprefix._tocum &dsprefix._totmp;
         RUN;
         %END;
-    PROC MEANS DATA=&out. NOPRINT;
+    PROC MEANS DATA=&dsprefix._tocum NOPRINT;
         VAR turnover2way;
         OUTPUT OUT=&out. MEAN=avgturnover2way;
     DATA &out.;
