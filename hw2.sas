@@ -1,9 +1,9 @@
-%INCLUDE 'My Documents\My SAS Files\config.sas'; * Define SASHOME;
+%INCLUDE 'C:\Documents and Settings\Todd Groth\My Documents\My SAS Files\QAM-2\config.sas'; * Define SASHOME;
 %INCLUDE "&sashome\mlib.sas";           * Include macro library;
 
 LIBNAME dw "&sasdata\Data";             * dw: data warehouse;
 LIBNAME ws "&sasdata\Workspace";        * ws: workspace;
-LIBNAME rs "&sasdata\Results";          * rs: results;
+LIBNAME rs "&sasdata\Output";          * rs: results;
 
 %LET mStockLimit = 500;                 * Total stocks in universe;
 %LET mMaxLookBackInYears = 5;
@@ -37,3 +37,10 @@ LIBNAME rs "&sasdata\Results";          * rs: results;
   portfolios.
   -------------------------------------------------------------------- ;
 %INCLUDE "&sashome\p5_2_perform.sas"; 
+
+* --------------------------------------------------------------------
+  Perform industry weight analysis on constructed portfolios.
+  -------------------------------------------------------------------- ;
+
+%INCLUDE "&sashome\p5_4_industry.sas"; 
+
