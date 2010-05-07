@@ -15,6 +15,9 @@ DATA ws.indust_label(drop=year);
 	if first.permno = 1;
 RUN;
 
+%annual_seq(ds=ws.Hist5yr_bt_weights, from=&mFirstYear, to=&mFinalYear);
+RUN;
+
 %MACRO industry_wt(length=, port= );
 
 %do yr=&mFirstYear %to &mFinalYear;	
@@ -112,6 +115,6 @@ run;
 %industry_wt(length=5, port=blport1);
 %industry_wt(length=5, port=blport2);
 *Bootstrapped portfolio;
-%industry_wt(length=5, port=blport2);
+%industry_wt(length=5, port=bt);
 
 
