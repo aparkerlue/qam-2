@@ -234,6 +234,26 @@
     RUN;
 
     * ================================================================
+      Add portfolio year year-end weights to weights data set.
+      ================================================================ ;
+
+    PROC SORT DATA=&prefix._mv_monthly;
+        BY permno date;
+    DATA &prefix._mv_weights(KEEP=permno wt endwt);
+        MERGE &prefix._mv_weights &prefix._mv_monthly(WHERE=(month = 12));
+        BY permno;
+        endwt = dyn_wt * (1 + retx);
+    RUN;
+
+    PROC SORT DATA=&prefix._tn_monthly;
+        BY permno date;
+    DATA &prefix._tn_weights(KEEP=permno wt endwt);
+        MERGE &prefix._tn_weights &prefix._tn_monthly(WHERE=(month = 12));
+        BY permno;
+        endwt = dyn_wt * (1 + retx);
+    RUN;
+
+    * ================================================================
       Output results.
       ================================================================ ;
 
