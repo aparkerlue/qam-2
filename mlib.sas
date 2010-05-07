@@ -44,6 +44,7 @@
         BY permno;
         IF bIndexIn AND bDailyIn;
         IF LEFT(ret) IN ('B' 'C') THEN ret = 0;
+        IF LEFT(retx) IN ('B' 'C') THEN retx = 0;
     %MEND build_period_data;
 
 * --------------------------------------------------------------------
@@ -280,6 +281,18 @@
     %returns_sample_covar_and_mean(data=&histdata_daily.,
         outcovar=&prefix._&year._&preceding._cov,
         outmean=&prefix._&year._&preceding._mean_daily)
+    RUN;
+    * ----------------------------------------------------------------
+      FIXME: This is a hack.  Change missing values to 0 in covariance
+      matrix.
+      ---------------------------------------------------------------- ;
+    DATA &prefix._&year._&preceding._cov;
+        SET &prefix._&year._&preceding._cov;
+        ARRAY v (*) _ALL_;
+        DO i = 1 TO Dim(v);
+            IF MISSING(v(i)) THEN v(i) = 0;
+            END;
+        DROP i;
     RUN;
     * ----------------------------------------------------------------
       Build PermNo list from daily data.
