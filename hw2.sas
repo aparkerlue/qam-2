@@ -18,6 +18,12 @@ LIBNAME rs "&sasdata\Results";          * rs: results;
 %INCLUDE "&sashome\p1_2_portfolio.sas"; * Build portfolios. ;
 
 * ====================================================================
+  Bootstrap resampling.
+  ==================================================================== ;
+
+%INCLUDE "&sashome\p4_bootstrap_resampling.sas"; * Build portfolios. ;
+
+* ====================================================================
   Standard Attribution Data
   ==================================================================== ;
 
