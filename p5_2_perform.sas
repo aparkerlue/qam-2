@@ -40,6 +40,11 @@ run;
 %rel_perf(portfolio=mvwPortfolio, yearLength=5);
 %rel_perf(portfolio=TangPortfolio, yearLength=2);
 %rel_perf(portfolio=TangPortfolio, yearLength=5);
+*Black-Litterman portfolios;
+%rel_perf(portfolio=Blport1_, yearLength=5);
+%rel_perf(portfolio=Blport2_, yearLength=5);
+*'B' for bootstrapped portfolio;
+%rel_perf(portfolio=TangPortfolio, yearLength=b);
 
 
 
@@ -95,3 +100,8 @@ run;
 %abs_perf(portfolio=mvwPortfolio, yearLength=5);
 %abs_perf(portfolio=TangPortfolio, yearLength=2);
 %abs_perf(portfolio=TangPortfolio, yearLength=5);
+*Black-Litterman portfolios;
+%abs_perf(portfolio=Blport1_, yearLength=5);
+%abs_perf(portfolio=Blport2_, yearLength=5);
+*'B' for bootstrapped portfolio;
+%abs_perf(portfolio=TangPortfolio, yearLength=b);

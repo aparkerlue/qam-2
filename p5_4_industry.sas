@@ -108,7 +108,10 @@ run;
 %industry_wt(length= 5, port=tn);
 %industry_wt(length= 2, port=mv);
 %industry_wt(length= 5, port=mv);
-*%industry_wt(length=5, port=blport1);
-*%industry_wt(length=5, port=blport2);
+*Black-Litterman portfolios;
+%industry_wt(length=5, port=blport1);
+%industry_wt(length=5, port=blport2);
+*Bootstrapped portfolio;
+%industry_wt(length=5, port=blport2);
 
 

@@ -71,6 +71,11 @@ ods tagsets.excelxp close;
 %reg_sp500(portfolio=mvwPortfolio, yearLength=5);
 %reg_sp500(portfolio=TangPortfolio, yearLength=2);
 %reg_sp500(portfolio=TangPortfolio, yearLength=5);
+*Black-Litterman portfolios;
+%reg_sp500(portfolio=Blport1_, yearLength=5);
+%reg_sp500(portfolio=Blport2_, yearLength=5);
+*'b' for bootstrapped portfolio;
+%reg_sp500(portfolio=TangPortfolio, yearLength=b);
 
 
 
@@ -127,3 +132,8 @@ ods tagsets.excelxp close;
 %reg_fff(portfolio=mvwPortfolio, yearLength=5);
 %reg_fff(portfolio=TangPortfolio, yearLength=2);
 %reg_fff(portfolio=TangPortfolio, yearLength=5);
+*Black-Litterman portfolios;
+%reg_fff(portfolio=Blport1_, yearLength=5);
+%reg_fff(portfolio=Blport2_, yearLength=5);
+*'b' for bootstrapped portfolio;
+%reg_fff(portfolio=TangPortfolio, yearLength=b);
