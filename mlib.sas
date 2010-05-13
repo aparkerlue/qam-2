@@ -312,12 +312,17 @@
 
     PROC OPTMODEL;
         * Parameters ;
-        number rf init 0.04;
-        number n init 500;              * 500 weights ;
-        var w{1..n};
+        number rf = 0.04;
+        *read data DATASET into rf;
+        number n = 500;                 * 500 weights ;
+
         * Model Specification ;
+        var w{1..n};
         max f = (sum{i in 1..n}(w[i]*r[i]) - rf)
             / sqrt(sum{i in 1..n, j in 1..n} w[i]*w[j]*cov[i,j]);
+        constraint unity: sum{i in 1..n} w[i] = 1;
+        constraint bounds{i in 1..n}: 0 <= w[i] <= 0.1;
+
         * Solve ;
         solve with nlpc / tech=cgr;     * Nonlinear optim., conj. gradient ;
         QUIT;
