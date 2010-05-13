@@ -283,6 +283,185 @@
 
     %MEND portfolio_buy_hold_one_year;
 
+%MACRO constrained_portfolio_buy_hold_one_year(year=, preceding=, histdata=,
+    prefix=, mvwout=, mvout=, tnwout=, tnout=);
+    * ----------------------------------------------------------------
+      Generate sample covariance matrix and average returns, build
+      PermNo list, and compute risk-free rate for period.
+      ---------------------------------------------------------------- ;
+    %returns_sample_covar_and_mean(data=&histdata.,
+        outcovar=&prefix._cov, outmean=&prefix._mean)
+    RUN;
+    %permnos_from_covar_matrix(covmat=&prefix._cov, out=&prefix._permnos)
+    RUN;
+    %period_riskfree(ffdata=ws.Ff_monthly, year=&year., preceding=&preceding.,
+        out=&prefix._riskfree)
+    RUN;
+
+    * ----------------------------------------------------------------
+      Compute average risk-free rate for period.
+      ---------------------------------------------------------------- ;
+    PROC MEANS DATA=&prefix._riskfree NOPRINT;
+        VAR rf;
+        OUTPUT OUT=&prefix._riskfree_mean(KEEP=rf) MEAN=rf;
+    RUN;
+
+    * ================================================================
+      Compute minimum variance and tangency portfolio weights.
+      ================================================================ ;
+
+    PROC OPTMODEL;
+        * Parameters ;
+        number rf init 0.04;
+        number n init 500;              * 500 weights ;
+        var w{1..n};
+        * Model Specification ;
+        max f = (sum{i in 1..n}(w[i]*r[i]) - rf)
+            / sqrt(sum{i in 1..n, j in 1..n} w[i]*w[j]*cov[i,j]);
+        * Solve ;
+        solve with nlpc / tech=cgr;     * Nonlinear optim., conj. gradient ;
+        QUIT;
+    * Input: &prefix._cov, &prefix._riskfree_mean, &prefix._mean ;
+    * Output: &prefix._mv_weights, &prefix._tn_weights;
+
+    * ----------------------------------------------------------------
+      Minimum variance portfolio weights.
+      ---------------------------------------------------------------- ;
+    DATA &prefix._mv_weights;
+        MERGE &prefix._permnos &prefix._mv_weights(RENAME=(COL1 = wt));
+        IF wt LT 0 THEN wt = 0;
+    PROC MEANS DATA=&prefix._mv_weights NOPRINT;
+        VAR wt;
+        OUTPUT OUT=&prefix._mv_weights_sum SUM=wtsum;
+    DATA &prefix._mv_weights(KEEP=permno wt);
+        SET &prefix._mv_weights;
+        IF _N_ EQ 1 THEN SET &prefix._mv_weights_sum(KEEP=wtsum);
+        wt = wt / wtsum;                    * Normalize;
+    RUN;
+
+    * ----------------------------------------------------------------
+      Tangency portfolio weights.
+      ---------------------------------------------------------------- ;
+    DATA &prefix._tn_weights;
+        MERGE &prefix._permnos &prefix._tn_weights(RENAME=(COL1 = wt));
+        IF wt LT 0 THEN wt = 0;
+    PROC MEANS DATA=&prefix._tn_weights NOPRINT;
+        VAR wt;
+        OUTPUT OUT=&prefix._tn_weights_sum SUM=wtsum;
+    DATA &prefix._tn_weights(KEEP=permno wt);
+        SET &prefix._tn_weights;
+        IF _N_ EQ 1 THEN SET &prefix._tn_weights_sum(KEEP=wtsum);
+        wt = wt / wtsum;                    * Normalize;
+    RUN;
+
+    * ================================================================
+      Compute dynamic weights.
+      ================================================================ ;
+
+    PROC SORT DATA=&prefix._mv_weights;
+        BY permno;
+    DATA &prefix._mv_monthly(KEEP=permno date year month wt ret retx dyn_wt
+        lag_retx);
+        MERGE &prefix._mv_weights(IN=bWeightsIn)
+            ws.Crsp_monthly(WHERE=(year EQ &year.));
+        BY permno;
+        IF bWeightsIn;
+        RETAIN dyn_wt;
+        lag_retx = LAG(retx);
+        IF FIRST.permno THEN DO;
+            lag_retx = 0;
+            dyn_wt = wt;
+            END;
+        ELSE dyn_wt = dyn_wt * (1 + lag_retx);
+    PROC SORT DATA=&prefix._mv_monthly;
+        BY date permno;
+    RUN;
+
+    PROC SORT DATA=&prefix._tn_weights;
+        BY permno;
+    DATA &prefix._tn_monthly(KEEP=permno date year month wt ret retx dyn_wt
+        lag_retx);
+        MERGE &prefix._tn_weights(IN=bWeightsIn)
+            ws.Crsp_monthly(WHERE=(year EQ &year.));
+        BY permno;
+        IF bWeightsIn;
+        RETAIN dyn_wt;
+        lag_retx = LAG(retx);
+        IF FIRST.permno THEN DO;
+            lag_retx = 0;
+            dyn_wt = wt;
+            END;
+        ELSE dyn_wt = dyn_wt * (1 + lag_retx);
+    PROC SORT DATA=&prefix._tn_monthly;
+        BY date permno;
+    RUN;
+
+    * ================================================================
+      Compute monthly returns.
+      ================================================================ ;
+
+    PROC MEANS DATA=&prefix._mv_monthly NOPRINT;
+        BY year month;
+        VAR ret retx;
+        WEIGHT dyn_wt;
+        OUTPUT OUT=&prefix._mv_monthly_return MEAN=tr pr;
+    PROC MEANS DATA=&prefix._tn_monthly NOPRINT;
+        BY year month;
+        VAR ret retx;
+        WEIGHT dyn_wt;
+        OUTPUT OUT=&prefix._tn_monthly_return MEAN=tr pr;
+    RUN;
+
+    * ================================================================
+      Add portfolio year year-end weights to weights data set.
+      ================================================================ ;
+
+    PROC SORT DATA=&prefix._mv_monthly;
+        BY permno date;
+    DATA &prefix._mv_weights;
+        MERGE &prefix._mv_weights &prefix._mv_monthly(WHERE=(month = 12));
+        BY permno;
+        endwt = dyn_wt * (1 + retx);
+    PROC MEANS DATA=&prefix._mv_weights NOPRINT;
+        VAR endwt;
+        OUTPUT OUT=Sumwt SUM=wtsum;
+    DATA &prefix._mv_weights(KEEP=permno wt endwt);
+        SET &prefix._mv_weights;
+        IF _N_ EQ 1 THEN SET Sumwt(KEEP=wtsum);
+        endwt = endwt / wtsum;
+    RUN;
+
+    PROC SORT DATA=&prefix._tn_monthly;
+        BY permno date;
+    DATA &prefix._tn_weights;
+        MERGE &prefix._tn_weights &prefix._tn_monthly(WHERE=(month = 12));
+        BY permno;
+        endwt = dyn_wt * (1 + retx);
+    PROC MEANS DATA=&prefix._tn_weights NOPRINT;
+        VAR endwt;
+        OUTPUT OUT=Sumwt SUM=wtsum;
+    DATA &prefix._tn_weights(KEEP=permno wt endwt);
+        SET &prefix._tn_weights;
+        IF _N_ EQ 1 THEN SET Sumwt(KEEP=wtsum);
+        endwt = endwt / wtsum;
+    RUN;
+
+    * ================================================================
+      Output results.
+      ================================================================ ;
+
+    DATA &mvwout.;
+        SET &prefix._mv_weights;
+    DATA &mvout.;
+        SET &prefix._mv_monthly_return;
+    DATA &tnwout.;
+        SET &prefix._tn_weights;
+    DATA &tnout.;
+        SET &prefix._tn_monthly_return;
+    RUN;
+
+    %MEND constrained_portfolio_buy_hold_one_year;
+
 %MACRO execute_mv_and_tn_strategies(from=, to=, each=,
     data_prefix=, data_index=, work_prefix=, out_prefix=);
     %DO pyear = &from. %TO &to.;
