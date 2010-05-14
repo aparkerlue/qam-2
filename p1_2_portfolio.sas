@@ -37,7 +37,7 @@ RUN;
     %MEND constrained_portfolios_mv_tn;
 
 %LET lookback = 2;
-%constrained_portfolios_mv_tn(from=1970, to=1971,
+%constrained_portfolios_mv_tn(from=&mFirstYear., to=&mFinalYear.,
     each=&lookback., data_prefix=ws.Top&mStockLimit._daily,
     data_index=ws.Top&mStockLimit._by_year, work_prefix=work.Period,
     out_prefix=ws.Hist&lookback.yrcnstr)
