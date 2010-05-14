@@ -283,7 +283,7 @@
 
     %MEND portfolio_buy_hold_one_year;
 
-%MACRO constrained_portfolio_buy_hold_one_year(year=, preceding=, histdata=,
+%MACRO cnstrportfolio_buy_hold_one_year(year=, preceding=, histdata=,
     prefix=, mvwout=, mvout=, tnwout=, tnout=);
     * ----------------------------------------------------------------
       Generate sample covariance matrix and average returns, build
@@ -307,33 +307,70 @@
     RUN;
 
     * ================================================================
+      Transform mean return and covariance matrix data sets to have
+      generic variable names.
+      ================================================================ ;
+
+    * Mean returns ;
+    PROC TRANSPOSE DATA=&prefix._mean OUT=&prefix._meananon;
+        VAR permno_:;
+    RUN;
+
+    * Covariance matrix ;
+    DATA _NULL_;
+        SET work.Period_cov(OBS=1);
+        LENGTH szVarNames $7000;            * FIXME: magic number. ;
+        ARRAY v (*) _NUMERIC_;
+        DO i = 1 TO DIM(v);
+            szVarNames = TRIM(szVarNames)||' '||TRIM(VNAME(v(i)));
+            END;
+        CALL SYMPUT('mVarNames', szVarNames);
+        CALL SYMPUT('mVarCount', DIM(v));
+    RUN;
+    %rename_cov_vars(&mVarNames., &mVarCount.)
+    RUN;
+
+    * ================================================================
       Compute minimum variance and tangency portfolio weights.
       ================================================================ ;
 
-    PROC OPTMODEL;
+    PROC OPTMODEL PRINTLEVEL=0;
         * Parameters ;
-        number rf = 0.04;
-        *read data DATASET into rf;
-        number n = 500;                 * 500 weights ;
+        number rf;
+        read data Period_riskfree_mean into rf;
 
-        * Model Specification ;
-        var w{1..n};
-        max f = (sum{i in 1..n}(w[i]*r[i]) - rf)
-            / sqrt(sum{i in 1..n, j in 1..n} w[i]*w[j]*cov[i,j]);
-        constraint unity: sum{i in 1..n} w[i] = 1;
-        constraint bounds{i in 1..n}: 0 <= w[i] <= 0.1;
+        set<num> indx;
+        number r{indx};
+        read data &prefix._meananon into indx=[_N_] r=COL1;
 
-        * Solve ;
+        set<num> row, col = indx;
+        number cov{row,col};
+        read data &prefix._covanon
+            into row=[_N_]
+            {c in col} < cov[_N_,c] = col("COL"||c) >;
+
+        * Model specifications ;
+        var w{indx} init 0.002;             * 1/500 ;
+        constraint unity: sum{i in indx} w[i] = 1;
+        constraint bounds{i in indx}: 0 <= w[i] <= 0.1;
+
+        * Tangency ;
+        max f = (sum{i in indx}(w[i]*r[i]) - rf)
+            / sqrt(sum{i in indx, j in indx} w[i]*w[j]*cov[i,j]);
         solve with nlpc / tech=cgr;     * Nonlinear optim., conj. gradient ;
+        create data &prefix._tn_weights from [i] COL1=w;
+
+        * Minimum variance ;
+        max g = sum{i in indx, j in indx} w[i]*w[j]*cov[i,j];
+        solve with nlpc / tech=cgr;     * Nonlinear optim., conj. gradient ;
+        create data &prefix._mv_weights from [i] COL1=w;
         QUIT;
-    * Input: &prefix._cov, &prefix._riskfree_mean, &prefix._mean ;
-    * Output: &prefix._mv_weights, &prefix._tn_weights;
 
     * ----------------------------------------------------------------
       Minimum variance portfolio weights.
       ---------------------------------------------------------------- ;
     DATA &prefix._mv_weights;
-        MERGE &prefix._permnos &prefix._mv_weights(RENAME=(COL1 = wt));
+        MERGE &prefix._permnos &prefix._mv_weights(RENAME=(COL1 = wt) DROP=i);
         IF wt LT 0 THEN wt = 0;
     PROC MEANS DATA=&prefix._mv_weights NOPRINT;
         VAR wt;
@@ -348,7 +385,7 @@
       Tangency portfolio weights.
       ---------------------------------------------------------------- ;
     DATA &prefix._tn_weights;
-        MERGE &prefix._permnos &prefix._tn_weights(RENAME=(COL1 = wt));
+        MERGE &prefix._permnos &prefix._tn_weights(RENAME=(COL1 = wt) DROP=i);
         IF wt LT 0 THEN wt = 0;
     PROC MEANS DATA=&prefix._tn_weights NOPRINT;
         VAR wt;
@@ -465,7 +502,7 @@
         SET &prefix._tn_monthly_return;
     RUN;
 
-    %MEND constrained_portfolio_buy_hold_one_year;
+    %MEND cnstrportfolio_buy_hold_one_year;
 
 %MACRO execute_mv_and_tn_strategies(from=, to=, each=,
     data_prefix=, data_index=, work_prefix=, out_prefix=);
@@ -729,3 +766,12 @@
         RUN;
         %END;
     %MEND execute_bootstrap_tn_strategy;
+
+* Rename covariance matrix so that variable names are sequential. ;
+%MACRO rename_cov_vars(var_names, var_count);
+    DATA work.Period_covanon;
+        SET work.Period_cov;
+        %DO idx = 1 %TO &var_count.;
+            RENAME %SCAN(&var_names., &idx.) = COL&idx.;
+            %END;
+    %MEND rename_cov_vars;

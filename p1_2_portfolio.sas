@@ -27,7 +27,7 @@ RUN;
             preceding=&each., index=&data_index., indexout=&work_prefix._index,
             out=&work_prefix._daily)
         * Construct portfolio and compute returns. ;
-        %portfolio_buy_hold_one_year(year=&portfolio_year., preceding=&each.,
+        %cnstrportfolio_buy_hold_one_year(year=&portfolio_year., preceding=&each.,
             histdata=&work_prefix._daily, prefix=&work_prefix.,
             mvwout=&out_prefix._mv_weights_&portfolio_year.,
             mvout=&out_prefix._mv_returns_&portfolio_year.,
@@ -36,11 +36,11 @@ RUN;
         %END;
     %MEND constrained_portfolios_mv_tn;
 
-%LET lookback = 5;
+%LET lookback = 2;
 %constrained_portfolios_mv_tn(from=1970, to=1971,
     each=&lookback., data_prefix=ws.Top&mStockLimit._daily,
     data_index=ws.Top&mStockLimit._by_year, work_prefix=work.Period,
-    out_prefix=ws.Hist&lookback.yr)
+    out_prefix=ws.Hist&lookback.yrcnstr)
 RUN;
 
 * --------------------------------------------------------------------
@@ -59,4 +59,8 @@ RUN;
   0% minimum weight and 10% maximum weight.
   -------------------------------------------------------------------- ;
 %LET lookback = 2;
+%constrained_portfolios_mv_tn(from=&mFirstYear., to=&mFinalYear.,
+    each=&lookback., data_prefix=ws.Top&mStockLimit._daily,
+    data_index=ws.Top&mStockLimit._by_year, work_prefix=work.Period,
+    out_prefix=ws.Hist&lookback.yrcnstr)
 RUN;
