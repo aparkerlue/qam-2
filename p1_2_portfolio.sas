@@ -69,10 +69,16 @@ RUN;
   Output data.
   -------------------------------------------------------------------- ;
 
-%MACRO output_portfolios();
-    DATA ws.Hist&lookback.yrcnstr_agg_&type.
-        * FIXME: stuffs to be added here;
+* type must be either returns or weights. ;
+%MACRO output_portfolios(dsprefix=, type=, from=, to=);
+    DATA &dsprefix._&type._agg;
+        SET %DO i = &from. %TO &to.; &dsprefix._&type._&i. %END; ;
+        %IF &type. = returns %THEN IF NOT MISSING(year) AND NOT MISSING(month);
+        %ELSE %IF &type. = weights %THEN %DO;
+            IF NOT MISSING(wt);
+            IF MISSING(endwt) THEN endwt = 0;
+            %END;
     %MEND output_portfolios;
 
-%output_portfolios()
+%output_portfolios(dsprefix=ws.Hist2yrcnstr_tn, type=weights, from=1970, to=1971)
 RUN;
