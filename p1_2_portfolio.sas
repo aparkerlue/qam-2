@@ -73,14 +73,16 @@ RUN;
 %MACRO output_portfolios(dsprefix=, type=, from=, to=);
     DATA &dsprefix._&type._agg;
         SET %DO i = &from. %TO &to.; &dsprefix._&type._&i. %END; ;
-        %IF &type. = returns %THEN IF NOT MISSING(year) AND NOT MISSING(month);
+        %IF &type. = returns %THEN %DO;
+            IF NOT MISSING(year);
+            %END;
         %ELSE %IF &type. = weights %THEN %DO;
             IF NOT MISSING(wt);
             IF MISSING(endwt) THEN endwt = 0;
             %END;
     %MEND output_portfolios;
 
-%LET ds=ws.Hist5yrcnstr_mv;
+%LET ds = ws.Hist5yrcnstr_tn;
 %output_portfolios(dsprefix=&ds., type=returns, from=1970, to=1971)
 RUN;
 
