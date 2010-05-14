@@ -64,3 +64,15 @@ RUN;
     data_index=ws.Top&mStockLimit._by_year, work_prefix=work.Period,
     out_prefix=ws.Hist&lookback.yrcnstr)
 RUN;
+
+* --------------------------------------------------------------------
+  Output data.
+  -------------------------------------------------------------------- ;
+
+%MACRO output_portfolios();
+    DATA ws.Hist&lookback.yrcnstr_agg_&type.
+        * FIXME: stuffs to be added here;
+    %MEND output_portfolios;
+
+%output_portfolios()
+RUN;

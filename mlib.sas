@@ -361,7 +361,7 @@
         create data &prefix._tn_weights from [i] COL1=w;
 
         * Minimum variance ;
-        max g = sum{i in indx, j in indx} w[i]*w[j]*cov[i,j];
+        min g = sum{i in indx, j in indx} w[i]*w[j]*cov[i,j];
         solve with nlpc / tech=cgr;     * Nonlinear optim., conj. gradient ;
         create data &prefix._mv_weights from [i] COL1=w;
         QUIT;
