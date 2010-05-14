@@ -80,5 +80,10 @@ RUN;
             %END;
     %MEND output_portfolios;
 
-%output_portfolios(dsprefix=ws.Hist2yrcnstr_tn, type=weights, from=1970, to=1971)
+%LET ds=ws.Hist5yrcnstr_mv;
+%output_portfolios(dsprefix=&ds., type=returns, from=1970, to=1971)
+RUN;
+
+PROC EXPORT DATA=&ds._&type._agg OUTFILE="&sasdata\Results\&ds._returns_agg.xls"
+    REPLACE;
 RUN;
