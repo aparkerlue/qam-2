@@ -87,6 +87,6 @@ RUN;
 %output_portfolios(dsprefix=&ds., type=&typ., from=1970, to=1971)
 RUN;
 
-PROC EXPORT DATA=&ds._&type._agg OUTFILE="&sasdata\Results\&ds._&typ._agg.xls"
+PROC EXPORT DATA=&ds._&typ._agg OUTFILE="&sasdata\&rsdir.\&ds._&typ._agg.xls"
     REPLACE;
 RUN;
